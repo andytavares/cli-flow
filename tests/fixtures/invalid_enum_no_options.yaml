@@ -1,0 +1,14 @@
+name: "Bad Enum"
+version: "1.0.0"
+description: "enum type with no options list"
+
+arguments:
+  env:
+    type: enum
+    description: "Environment"
+    required: false
+
+workflow:
+  steps:
+    - name: doThing
+      command: "echo {{ env }}"

@@ -1,0 +1,14 @@
+name: "Optional No Default"
+version: "1.0.0"
+description: "Optional arg with no default referenced in a command template"
+
+arguments:
+  target:
+    type: string
+    description: "Output directory"
+    required: false
+
+workflow:
+  steps:
+    - name: doThing
+      command: "echo {{ target }}"
