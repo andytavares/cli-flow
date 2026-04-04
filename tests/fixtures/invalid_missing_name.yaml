@@ -1,0 +1,7 @@
+version: "1.0.0"
+description: "Missing the name field"
+
+workflow:
+  steps:
+    - name: doThing
+      command: "echo hi"

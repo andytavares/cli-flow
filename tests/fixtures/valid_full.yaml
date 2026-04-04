@@ -1,0 +1,59 @@
+name: "Developer Onboarding"
+version: "1.0.0"
+description: "Clone a repo and start local services"
+
+arguments:
+  repo:
+    type: string
+    format: "company/my-repo"
+    description: "The repository to set up"
+    required: true
+  useHttps:
+    type: boolean
+    description: "Use HTTPS instead of SSH to clone"
+    required: false
+    default: false
+  target:
+    type: string
+    format: "/path/to/location"
+    description: "The location to clone the repo into"
+    required: true
+  port:
+    type: number
+    description: "Port to expose"
+    required: false
+    default: 8080
+  env:
+    type: enum
+    description: "Deployment environment"
+    required: false
+    default: "local"
+    options:
+      - local
+      - staging
+      - production
+
+workflow:
+  dependsOn:
+    - docker compose
+    - git
+  env:
+    LOG_LEVEL: info
+  steps:
+    - name: pullRepo
+      description: "Clone the repository"
+      command: "git clone {{ useHttps ? 'https://github.com/' : 'git@github.com:' }}{{ repo }}.git {{ target }}"
+      soft-fail: false
+    - name: startServices
+      description: "Start Docker services"
+      command: "docker compose up -d"
+      workdir: "{{ target }}"
+      soft-fail: false
+      env:
+        COMPOSE_PROJECT_NAME: myproject
+    - name: showStatus
+      description: "Show running containers"
+      command: "docker compose ps"
+      workdir: "{{ target }}"
+      soft-fail: true
+      condition: "{{ env == 'local' }}"
