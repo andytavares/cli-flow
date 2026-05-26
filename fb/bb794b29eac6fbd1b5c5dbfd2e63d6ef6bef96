@@ -1,0 +1,35 @@
+README.md
+  s_c2d5ac47e3a1f6::t_ec3510b86ea9ed 188-189
+  s_c2d5ac47e3a1f6::t_8bd7dbff62d48d 211-226
+src/cli_flow/executor.py
+  s_c2d5ac47e3a1f6::t_8416deb15b481d 114-122,125-127,133-134,136-150
+  s_c2d5ac47e3a1f6::t_bf0860fb462092 85-88,92,95-98
+tests/test_loader.py
+  s_c2d5ac47e3a1f6::t_5c1a14730c626e 150-217
+src/cli_flow/loader.py
+  s_c2d5ac47e3a1f6::t_1ecf3be3824166 207-220,229-230
+  s_c2d5ac47e3a1f6::t_cbfc6910d3853b 44-45
+tests/test_executor.py
+  s_c2d5ac47e3a1f6::t_d5e9ad5b36e0a3 161-306
+  s_c2d5ac47e3a1f6::t_a15c137ed8c3a3 10
+SPEC.md
+  s_c2d5ac47e3a1f6::t_ef5e6679af0e6c 98-99
+  s_c2d5ac47e3a1f6::t_db60c6c806be1f 120
+  s_c2d5ac47e3a1f6::t_556121b8ae6370 239-244,251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "fbbb794b29eac6fbd1b5c5dbfd2e63d6ef6bef96",
+  "prompts": {},
+  "sessions": {
+    "s_c2d5ac47e3a1f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10856a3e-7606-467b-9791-103e2d10e39d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Andrew <andrew.tavaes87@gmail.com>"
+    }
+  }
+}
