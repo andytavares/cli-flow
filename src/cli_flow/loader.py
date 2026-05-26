@@ -41,6 +41,8 @@ class Step:
     condition: str | None     # Jinja2 expression; step is skipped when this evaluates falsy
     workdir: str | None
     env: dict[str, str]
+    result: str | None        # variable name to store captured stdout in
+    error: str | None         # variable name to store captured stderr in
 
 
 @dataclass
@@ -202,6 +204,20 @@ def _parse_steps(raw: list[Any], source: str) -> list[Step]:
         if not command:
             raise SchemaError(f"step '{name}': 'command' is required", file=source)
 
+        result = spec.get("result")
+        if result is not None and not str(result).isidentifier():
+            raise SchemaError(
+                f"step '{name}': 'result' must be a valid identifier, got '{result}'",
+                file=source,
+            )
+
+        error = spec.get("error")
+        if error is not None and not str(error).isidentifier():
+            raise SchemaError(
+                f"step '{name}': 'error' must be a valid identifier, got '{error}'",
+                file=source,
+            )
+
         steps.append(Step(
             name=name,
             command=command,
@@ -210,6 +226,8 @@ def _parse_steps(raw: list[Any], source: str) -> list[Step]:
             condition=spec.get("condition"),
             workdir=spec.get("workdir"),
             env=dict(spec.get("env") or {}),
+            result=str(result) if result is not None else None,
+            error=str(error) if error is not None else None,
         ))
 
     return steps

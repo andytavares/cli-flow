@@ -147,3 +147,71 @@ class TestInvalidFlows:
         with pytest.raises(SchemaError) as exc_info:
             load_flow(str(bad))
         assert "duplicate" in str(exc_info.value)
+
+
+class TestStepCapture:
+    def _minimal_flow(self, tmp_path, extra_step_yaml: str) -> str:
+        path = tmp_path / "flow.yaml"
+        path.write_text(
+            "name: x\nversion: '1'\ndescription: x\n"
+            f"workflow:\n  steps:\n    - name: s\n      command: echo hi\n{extra_step_yaml}"
+        )
+        return str(path)
+
+    def test_result_field_parsed(self, tmp_path):
+        path = tmp_path / "flow.yaml"
+        path.write_text(
+            "name: x\nversion: '1'\ndescription: x\n"
+            "workflow:\n  steps:\n    - name: s\n      command: echo hi\n      result: my_var\n"
+        )
+        flow = load_flow(str(path))
+        assert flow.workflow.steps[0].result == "my_var"
+
+    def test_error_field_parsed(self, tmp_path):
+        path = tmp_path / "flow.yaml"
+        path.write_text(
+            "name: x\nversion: '1'\ndescription: x\n"
+            "workflow:\n  steps:\n    - name: s\n      command: echo hi\n      error: my_err\n"
+        )
+        flow = load_flow(str(path))
+        assert flow.workflow.steps[0].error == "my_err"
+
+    def test_both_fields_parsed(self, tmp_path):
+        path = tmp_path / "flow.yaml"
+        path.write_text(
+            "name: x\nversion: '1'\ndescription: x\n"
+            "workflow:\n  steps:\n    - name: s\n      command: echo hi\n"
+            "      result: out\n      error: err\n"
+        )
+        flow = load_flow(str(path))
+        assert flow.workflow.steps[0].result == "out"
+        assert flow.workflow.steps[0].error == "err"
+
+    def test_no_capture_fields_defaults_to_none(self):
+        from cli_flow.loader import load_flow
+        from pathlib import Path
+        fixtures = Path(__file__).parent / "fixtures"
+        flow = load_flow(str(fixtures / "valid_full.yaml"))
+        for step in flow.workflow.steps:
+            assert step.result is None
+            assert step.error is None
+
+    def test_invalid_result_identifier_raises_schema_error(self, tmp_path):
+        path = tmp_path / "flow.yaml"
+        path.write_text(
+            "name: x\nversion: '1'\ndescription: x\n"
+            "workflow:\n  steps:\n    - name: s\n      command: echo hi\n      result: 123bad\n"
+        )
+        with pytest.raises(SchemaError) as exc_info:
+            load_flow(str(path))
+        assert "result" in str(exc_info.value)
+
+    def test_invalid_error_identifier_raises_schema_error(self, tmp_path):
+        path = tmp_path / "flow.yaml"
+        path.write_text(
+            "name: x\nversion: '1'\ndescription: x\n"
+            "workflow:\n  steps:\n    - name: s\n      command: echo hi\n      error: bad-name\n"
+        )
+        with pytest.raises(SchemaError) as exc_info:
+            load_flow(str(path))
+        assert "error" in str(exc_info.value)

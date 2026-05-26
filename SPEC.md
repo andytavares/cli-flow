@@ -95,6 +95,8 @@ cli-flow/
        condition: str | None        # Jinja2 expression string, or None
        workdir: str | None
        env: dict[str, str]          # empty dict if not set
+       result: str | None           # variable name to capture stdout into, or None
+       error: str | None            # variable name to capture stderr into, or None
 
    @dataclass
    class Workflow:
@@ -115,7 +117,7 @@ cli-flow/
    - Open and parse YAML using `yaml.safe_load` (pure-Python `SafeLoader` — never `CLoader`); raise `SchemaError` with file path and line hint if YAML is malformed
    - Validate required top-level keys: `name`, `version`, `description`, `workflow`
    - For each argument: validate `type` is one of the four allowed values; validate `options` is present iff `type == "enum"`; validate `default` is only set when `required == False`; store `_MISSING` when no `default` key is present in the YAML
-   - For each step: validate `name` is unique within the flow; `soft_fail` defaults to `False` if absent
+   - For each step: validate `name` is unique within the flow; `soft_fail` defaults to `False` if absent; if `result` or `error` is set, validate it is a valid Python identifier (using `str.isidentifier()`), raise `SchemaError` otherwise
    - Return a fully populated `Flow` dataclass
 
 3. **`errors.py`** — define shared exceptions:
@@ -234,15 +236,19 @@ cli-flow/
    - Render `command` via `render_command`
    - Resolve `workdir` via `render_command` if set (it may contain template vars)
    - Merge env: `{**os.environ, **flow.workflow.env, **step.env}` (step-level wins on conflict)
-   - If `dry_run`: print the rendered command and continue without executing
-   - Otherwise: execute via `subprocess.run(command, shell=True, cwd=workdir, env=merged_env)` with **no stdout/stderr capture** — output streams directly to the terminal in real time
+   - If `dry_run`: print the rendered command; if `step.result` or `step.error` is set, inject `"<captured>"` into context so downstream templates render; continue without executing
+   - Otherwise: execute via `subprocess.run`
+     - If neither `step.result` nor `step.error` is set: no capture (`stdout`/`stderr` inherit from parent), output streams directly to terminal in real time
+     - If `step.result` is set: use `stdout=subprocess.PIPE`; after execution decode, strip, and store in `context[step.result]`; print captured stdout to terminal
+     - If `step.error` is set: use `stderr=subprocess.PIPE`; after execution decode, strip, and store in `context[step.error]`; print captured stderr to terminal
+     - Context is only updated on exit code 0; a failed step does not populate capture variables
    - On non-zero exit:
      - `soft_fail=False`: call `output.print_step_failure(name, exit_code)` (exit code only; stdout/stderr are already on screen above); return that exit code immediately
      - `soft_fail=True`: call `output.print_soft_fail(name, exit_code)`; continue
 
 2. **Exit summary**: After all steps complete (or after a hard failure), print counts: `"3 passed, 1 soft-failed, 1 skipped"`; return 0 if no hard failures
 
-**Acceptance**: Steps run in order with real-time output. Soft-fail steps log warning and continue. Condition-false steps are grey. Hard failures print exit code, halt, and return non-zero. Dry-run prints rendered commands without executing. `--step nonexistent` exits 1 with a list of valid step names.
+**Acceptance**: Steps run in order with real-time output. Soft-fail steps log warning and continue. Condition-false steps are grey. Hard failures print exit code, halt, and return non-zero. Dry-run prints rendered commands without executing. `--step nonexistent` exits 1 with a list of valid step names. `result`/`error` fields capture the respective stream, store it in context for downstream steps, and still print it to the terminal.
 
 ---
 

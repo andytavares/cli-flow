@@ -185,6 +185,8 @@ steps:
     workdir: "..."          # Working directory; supports {{ }} templates (optional)
     soft-fail: false        # If true, a non-zero exit continues execution (default: false)
     condition: "{{ ... }}"  # Skip this step if the expression is falsy (optional)
+    result: varName         # Capture stdout into a variable for downstream steps (optional)
+    error: varName          # Capture stderr into a variable for downstream steps (optional)
     env:                    # Step-level env vars; merged with workflow env (step wins)
       KEY: value
 ```
@@ -205,6 +207,22 @@ workdir: "{{ target }}/subdir"
 # Equivalent to: {{ 'https://' if useHttps else 'git@' }}
 command: "git clone {{ useHttps ? 'https://' : 'git@' }}github.com/{{ repo }}"
 ```
+
+**Step output capture** — use `result` and `error` to store a step's stdout or stderr in a named variable. The variable is then available to all subsequent steps via `{{ }}` templates:
+
+```yaml
+steps:
+  - name: getVersion
+    command: git describe --tags --abbrev=0
+    result: version          # stdout → {{ version }}
+    error: versionErr        # stderr → {{ versionErr }}
+
+  - name: buildImage
+    command: docker build -t myapp:{{ version }} .
+    condition: "{{ versionErr == '' }}"
+```
+
+Captured output is stripped of leading and trailing whitespace. The captured stream is still printed to the terminal so it remains visible.
 
 Referencing an undefined variable is a hard error — there are no silent blanks.
 
