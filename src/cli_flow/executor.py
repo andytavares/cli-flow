@@ -82,12 +82,20 @@ def run_flow(
         # --- dry-run: print and skip execution ---
         if dry_run:
             print(f"  $ {cmd}")
+            if step.result:
+                context[step.result] = "<captured>"
+            if step.error:
+                context[step.error] = "<captured>"
             continue
 
         # --- execute ---
-        exit_code = _run_step(cmd, cwd, flow, step)
+        exit_code, captured_out, captured_err = _run_step(cmd, cwd, flow, step)
 
         if exit_code == 0:
+            if step.result is not None:
+                context[step.result] = captured_out or ""
+            if step.error is not None:
+                context[step.error] = captured_err or ""
             output.print_step_success(step.name)
             passed += 1
         elif step.soft_fail:
@@ -103,14 +111,40 @@ def run_flow(
     return 0 if not failed else 1
 
 
-def _run_step(cmd: str, cwd: str | None, flow: Flow, step: Step) -> int:
-    """Execute a single step command, streaming output directly to the terminal."""
+def _run_step(
+    cmd: str, cwd: str | None, flow: Flow, step: Step
+) -> tuple[int, str | None, str | None]:
+    """Execute a single step command.
+
+    Returns (exit_code, captured_stdout, captured_stderr). Streams that are not
+    captured are None; streams that are captured are printed then returned as
+    stripped strings.
+    """
     merged_env = {**os.environ, **flow.workflow.env, **step.env}
+
+    stdout_pipe = subprocess.PIPE if step.result is not None else None
+    stderr_pipe = subprocess.PIPE if step.error is not None else None
 
     result = subprocess.run(
         cmd,
         shell=True,
         cwd=cwd,
         env=merged_env,
+        stdout=stdout_pipe,
+        stderr=stderr_pipe,
     )
-    return result.returncode
+
+    captured_out: str | None = None
+    captured_err: str | None = None
+
+    if step.result is not None and result.stdout is not None:
+        captured_out = result.stdout.decode(errors="replace").strip()
+        if captured_out:
+            print(captured_out)
+
+    if step.error is not None and result.stderr is not None:
+        captured_err = result.stderr.decode(errors="replace").strip()
+        if captured_err:
+            print(captured_err, file=__import__("sys").stderr)
+
+    return result.returncode, captured_out, captured_err
